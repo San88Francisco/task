@@ -1,11 +1,8 @@
+import { FC } from 'react';
+import { HomePage } from './pages/HomePage';
 
-function App() {
 
-  return (
-    <>
-      <h1>1</h1>
-    </>
-  )
+const App: FC = () => {
+  return <HomePage />;
 }
-
-export default App
+export default App;
