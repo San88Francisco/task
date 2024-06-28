@@ -1,10 +1,13 @@
 import axios from 'axios';
 import Papa from 'papaparse';
 
-export const fetchTransactions = async () => {
-  return (await axios.get('http://localhost:1000/transactions/transactions_caf02c1b_52bb_42fe_bb33_d0e3609f2f38')).data;
+export const fetchTransactions = async (transaction: string) => {
+  return (await axios.get(`http://localhost:1000/transactions/${transaction}`)).data;
 };
 
+export const getTransactionsAll = async () => {
+  return (await axios.get('http://localhost:1000/all-tables')).data;
+};
 export const uploadFile = async (file: File) => {
   try {
     const results = await new Promise<any>((resolve) => {
@@ -29,5 +32,20 @@ export const uploadFile = async (file: File) => {
   } catch (error) {
     console.error('Error uploading file:', error);
     throw new Error('Error uploading file');
+  }
+};
+
+export const deleteTransaction = async (tableName: string, transactionId: number) => {
+  try {
+    const response = await axios.delete(`http://localhost:1000/transactions/${tableName}/${transactionId}`, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Deleted transaction:', response.data);
+
+  } catch (error) {
+    console.error('Error deleting transaction:', error);
   }
 };

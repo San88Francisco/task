@@ -18,7 +18,7 @@ const createTable = (tableName) => {
     )
   `;
   db.exec(sql);
-  console.log(`Таблицю \`${tableName}\` створено або вже існує.`);
+  console.log(`Table \`${tableName}\` created or already exists.`);
 };
 
 const insertTransactions = (tableName, transactions) => {
@@ -33,9 +33,9 @@ const insertTransactions = (tableName, transactions) => {
         const { Status, Type, ClientName } = transaction;
         const Amount = parseFloat(transaction.Amount.replace('$', '').replace(',', ''));
         insert.run(Status, Type, ClientName, Amount);
-        console.log(`Вставлено транзакцію у ${tableName}: ${JSON.stringify(transaction)}`);
+        console.log(`Inserted transaction into ${tableName}: ${JSON.stringify(transaction)}`);
       } else {
-        console.error('Пропускаю неповну транзакцію:', transaction);
+        console.error('Skipping incomplete transaction:', transaction);
       }
     });
   });
@@ -49,19 +49,19 @@ app.use(cors());
 app.post('/uploads', (req, res) => {
   try {
     const transactions = req.body;
-    console.log('Отримані транзакції:', transactions);
+    console.log('Received transactions:', transactions);
 
     if (transactions && Array.isArray(transactions)) {
       const tableName = `transactions_${uuidv4().replace(/-/g, '_')}`;
       createTable(tableName);
       insertTransactions(tableName, transactions);
-      res.send(`Дані успішно збережено у таблиці ${tableName}.`);
+      res.send(`Data successfully saved to table ${tableName}.`);
     } else {
-      res.status(400).send('Некоректні дані.');
+      res.status(400).send('Invalid data.');
     }
   } catch (error) {
-    console.error('Помилка обробки запиту /uploads:', error);
-    res.status(500).send('Внутрішня помилка сервера.');
+    console.error('Error handling /uploads request:', error);
+    res.status(500).send('Internal server error.');
   }
 });
 
@@ -71,12 +71,54 @@ app.get('/transactions/:tableName', (req, res) => {
     const transactions = db.prepare(`SELECT * FROM ${tableName}`).all();
     res.json(transactions);
   } catch (error) {
-    console.error('Помилка отримання даних з таблиці:', error);
-    res.status(500).send('Помилка при отриманні даних з таблиці.');
+    console.error('Error retrieving data from table:', error);
+    res.status(500).send('Error retrieving data from table.');
+  }
+});
+
+app.get('/all-tables', (req, res) => {
+  try {
+    const tables = db.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type='table' AND name LIKE 'transactions_%'
+    `).all();
+    const tableNames = tables.map(table => table.name);
+    res.json(tableNames);
+  } catch (error) {
+    console.error('Error retrieving table list:', error);
+    res.status(500).send('Error retrieving table list.');
+  }
+});
+
+app.delete('/transactions/:tableName/:transactionId', (req, res) => {
+  const { tableName, transactionId } = req.params;
+
+  try {
+    const deleteStmt = db.prepare(`DELETE FROM ${tableName} WHERE TransactionId = ?`);
+    deleteStmt.run(transactionId);
+
+    const remainingTransactions = db.prepare(`SELECT * FROM ${tableName}`).all();
+
+    if (remainingTransactions.length === 0) {
+      const dropTableStmt = db.prepare(`DROP TABLE ${tableName}`);
+      dropTableStmt.run();
+      res.send(`Transaction with ID ${transactionId} successfully deleted. Table \`${tableName}\` deleted as it is empty.`);
+    } else {
+      let newIndex = 1;
+      const updateStmt = db.prepare(`UPDATE ${tableName} SET TransactionId = ? WHERE TransactionId = ?`);
+      remainingTransactions.forEach(transaction => {
+        updateStmt.run(newIndex++, transaction.TransactionId);
+      });
+
+      res.send(`Transaction with ID ${transactionId} successfully deleted and identifiers updated.`);
+    }
+  } catch (error) {
+    console.error('Error deleting transaction:', error);
+    res.status(500).send('Error deleting transaction.');
   }
 });
 
 const port = 1000;
 app.listen(port, () => {
-  console.log(`Сервер запущено на порті ${port}`);
+  console.log(`Server running on port ${port}`);
 });
