@@ -26,3 +26,11 @@ WHERE id = 2
 -- видаляєм всю базу 
 DROP TABLE transactions_b71d8897_0eef_44d3_bd78_088e53edbea3
 
+-- дроп всієї бд (без видалення бд)
+PRAGMA writable_schema = 1;
+
+DELETE FROM sqlite_master 
+WHERE type = 'table' AND name LIKE 'transactions_%';
+
+PRAGMA writable_schema = 0;
+VACUUM;

@@ -118,6 +118,55 @@ app.delete('/transactions/:tableName/:transactionId', (req, res) => {
   }
 });
 
+
+app.patch('/transactions/:tableName/:transactionId', (req, res) => {
+  const { tableName, transactionId } = req.params;
+  const { amount, clientName, status, type } = req.body;
+
+  try {
+    // Перевіряємо, чи є ідентифікатор транзакції та всі необхідні поля
+    if (!transactionId || (!amount && !clientName && !status && !type)) {
+      return res.status(400).send('Invalid request.');
+    }
+
+    const updateFields = [];
+    const updateParams = [];
+
+    if (amount) {
+      updateFields.push('Amount = ?');
+      updateParams.push(amount);
+    }
+    if (clientName) {
+      updateFields.push('ClientName = ?');
+      updateParams.push(clientName);
+    }
+    if (status) {
+      updateFields.push('Status = ?');
+      updateParams.push(status);
+    }
+    if (type) {
+      updateFields.push('Type = ?');
+      updateParams.push(type);
+    }
+
+    // Формуємо SQL запит для оновлення
+    const sql = `UPDATE ${tableName} SET ${updateFields.join(', ')} WHERE TransactionId = ?`;
+    const updateStmt = db.prepare(sql);
+    updateParams.push(transactionId);
+
+    // Виконуємо оновлення
+    updateStmt.run(...updateParams);
+
+    // Отримуємо оновлену транзакцію з бази даних і відправляємо назад клієнту
+    const updatedTransaction = db.prepare(`SELECT * FROM ${tableName} WHERE TransactionId = ?`).get(transactionId);
+    res.json(updatedTransaction);
+  } catch (error) {
+    console.error('Error updating transaction:', error);
+    res.status(500).send('Error updating transaction.');
+  }
+});
+
+
 const port = 1000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
