@@ -1,12 +1,13 @@
-import { FC, useState, useEffect, Dispatch, SetStateAction } from "react";
-import { Table, Thead, Tbody, Tr, Th, Td, Box, Button, Flex } from "@chakra-ui/react";
-import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { deleteTransaction, fetchTransactions } from '../api/api';
-import { ModalCustom } from "./ModalCustom";
-import { buttonStyles } from "./DownloadCSV";
+import { FC, useState } from 'react';
+import { Table, Thead, Tbody, Tr, Th, Flex, Box } from '@chakra-ui/react';
+import { useSortedTransactions } from '../utils/useSortedTransactions';
+import { TransactionRow } from './TransactionRow';
+import useDeleteTransactionMutation from '../hooks/mutations/useDeleteTransactionMutation';
+import { ModalCustom } from './ModalCustom';
+import { StyledButton, TableContainer } from '../styles/style';
 
 export type Transaction = {
-  TransactionId: number;
+  TransactionId?: number;
   Status: string;
   Type: string;
   ClientName: string;
@@ -15,74 +16,26 @@ export type Transaction = {
 
 type PropsType = {
   selectedTable: string | null;
-  setDownloadArray: Dispatch<SetStateAction<Transaction[]>>;
+  setDownloadArray: (data: Transaction[]) => void;
 };
 
-
-const tableStyles = {
-  height: 480,
-  borderRadius: 20,
-  borderTop: '20px solid #c1e2a4',
-  boxShadow: 'rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset',
-  fontFamily: 'Roboto',
-  color: '#1C2621',
-  p: 15,
-  m: '40px 15px',
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'space-between'
-};
-
-const tableBtn = {
-  p: 10,
-  borderRadius: 15,
-  cursor: 'pointer',
-  border: 'none',
-  boxShadow: 'rgba(255, 255, 255, 0.2) 0px 0px 0px 1px inset, rgba(0, 0, 0, 0.9) 0px 0px 0px 1px',
-  transition: 'all 0.1s ease',
-  "&:hover": {
-    bg: "#fdfdfd",
-  },
-}
+const tableHeaders = [
+  { label: 'ID', type: 'TransactionId' },
+  { label: 'Status', type: 'Status' },
+  { label: 'Type', type: 'Type' },
+  { label: 'Client', type: 'ClientName' },
+  { label: 'Amount', type: 'Amount' },
+  { label: 'Action', type: 'Action' },
+];
 
 export const LoadingTransactions: FC<PropsType> = ({ selectedTable, setDownloadArray }) => {
-  const queryClient = useQueryClient();
+  const { deleteTransactionMutation } = useDeleteTransactionMutation();
 
-  const { data: transactions } = useQuery(
-    ['transactions', selectedTable],
-    () => fetchTransactions(selectedTable!),
-    {
-      enabled: !!selectedTable,
-      onSuccess: (data) => {
-        if (data) {
-          setDownloadArray(data);
-        }
-      },
-      keepPreviousData: true,
-      refetchOnWindowFocus: false
-    }
-  );
+  const { displayData, pageNumber, pageCount, handleSortClick, setPageNumber, transactions } =
+    useSortedTransactions(selectedTable, setDownloadArray);
 
-  const { mutate: deleteTransactionMutation } = useMutation(
-    ({ tableName, transactionId }: { tableName: string, transactionId: number }) => deleteTransaction(tableName, transactionId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['transactions', selectedTable]);
-      },
-      onError: (error: Error) => {
-        console.error('Error deleting transaction:', error);
-        alert('Error deleting transaction.');
-      },
-    }
-  );
-
-  const [pageNumber, setPageNumber] = useState(0);
   const [selectedTransactionId, setSelectedTransactionId] = useState<number | null>(null);
   const [openModal, setOpenModal] = useState<boolean>(false);
-
-  useEffect(() => {
-    setPageNumber(0);
-  }, [transactions]);
 
   const handleEditClick = (transactionId: number) => {
     setSelectedTransactionId(transactionId);
@@ -95,79 +48,50 @@ export const LoadingTransactions: FC<PropsType> = ({ selectedTable, setDownloadA
     }
   };
 
-  const transactionsPerPage = 10;
-  const pageCount = transactions ? Math.ceil(transactions.length / transactionsPerPage) : 1;
-
-  const displayData = transactions
-    ? transactions.slice(pageNumber * transactionsPerPage, (pageNumber + 1) * transactionsPerPage)
-    : [];
-
   if (!selectedTable) return null;
 
   return (
     <>
-      <Box sx={tableStyles}>
+      <TableContainer>
         <Table variant="simple" width="100%">
           <Thead>
             <Tr>
-              <Th>ID</Th>
-              <Th>Status</Th>
-              <Th>Type</Th>
-              <Th>Client</Th>
-              <Th>Amount</Th>
-              <Th>Action</Th>
+              {tableHeaders.map(header => (
+                <Th key={header.type} cursor="pointer" onClick={() => handleSortClick(header.type)}>
+                  {header.label}
+                </Th>
+              ))}
             </Tr>
           </Thead>
           <Tbody>
             {displayData.map((transaction: Transaction) => (
-              <Tr key={transaction.TransactionId} textAlign="center">
-                <Td>{transaction.TransactionId}</Td>
-                <Td>{transaction.Status}</Td>
-                <Td>{transaction.Type}</Td>
-                <Td>{transaction.ClientName}</Td>
-                <Td>{transaction.Amount}</Td>
-                <Td>
-                  <Button
-                    sx={tableBtn}
-                    onClick={() => handleEditClick(transaction.TransactionId)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    sx={tableBtn}
-                    onClick={() => handleDeleteClick(transaction.TransactionId)}
-                    variant="outline"
-                    colorScheme="red"
-                    ml={2}
-                  >
-                    Delete
-                  </Button>
-                </Td>
-              </Tr>
+              <TransactionRow
+                key={transaction.TransactionId}
+                transaction={transaction}
+                onEdit={handleEditClick}
+                onDelete={handleDeleteClick}
+              />
             ))}
           </Tbody>
-        </Table >
-
+        </Table>
         <Flex mt={20} justifyContent="flex-end" pr={4} gap={10}>
-          <Button
-            sx={buttonStyles}
+          <Box sx={{ m: 10 }}>
+            {pageNumber + 1}/{pageCount}
+          </Box>
+          <StyledButton
             onClick={() => setPageNumber(prev => Math.max(prev - 1, 0))}
             disabled={pageNumber === 0}
-            mr={2}
-            opacity={pageNumber === 0 ? 0.5 : 1}
           >
             Previous
-          </Button>
-          <Button
-            sx={buttonStyles}
+          </StyledButton>
+          <StyledButton
             onClick={() => setPageNumber(prev => Math.min(prev + 1, pageCount - 1))}
             disabled={pageNumber === pageCount - 1}
-            opacity={pageNumber === pageCount - 1 ? 0.5 : 1}
           >
             Next
-          </Button>
+          </StyledButton>
         </Flex>
-      </Box >
+      </TableContainer>
       <ModalCustom
         openModal={openModal}
         setOpenModal={setOpenModal}

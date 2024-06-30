@@ -1,19 +1,11 @@
 import { FC, useEffect, useState } from 'react';
 import { Box } from '@chakra-ui/react';
+import { BoxContainer } from '../styles/style';
 
 type TablesPanelProps = {
   selectedTable: string | null;
   setSelectedTable: (table: string | null) => void;
   tablesData: string[];
-};
-
-const boxStyles = {
-  w: 475,
-  borderRadius: 20,
-  boxShadow: 'rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset',
-  fontFamily: 'Roboto',
-  borderTop: '20px solid #c1e2a4',
-  m: 10,
 };
 
 export const TablesPanel: FC<TablesPanelProps> = ({
@@ -39,7 +31,7 @@ export const TablesPanel: FC<TablesPanelProps> = ({
       <Box as="h3" mb={2}>
         Table Names
       </Box>
-      <Box sx={boxStyles}>
+      <BoxContainer>
         <Box sx={{ overflowY: 'auto', height: '270px' }}>
           {tablesData.map((table: string, index: number) => (
             <Box
@@ -52,11 +44,11 @@ export const TablesPanel: FC<TablesPanelProps> = ({
                 backgroundColor: activeTable === table ? '#eef7e6' : 'transparent',
               }}
             >
-              {index + 1 + ') '} {table}
+              {`${index + 1}) ${table}`}
             </Box>
           ))}
         </Box>
-      </Box>
+      </BoxContainer>
     </Box>
   );
 };

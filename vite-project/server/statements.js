@@ -18,7 +18,6 @@ const createTable = (tableName) => {
     )
   `;
   db.exec(sql);
-  console.log(`Table \`${tableName}\` created or already exists.`);
 };
 
 const insertTransactions = (tableName, transactions) => {
@@ -33,7 +32,6 @@ const insertTransactions = (tableName, transactions) => {
         const { Status, Type, ClientName } = transaction;
         const Amount = parseFloat(transaction.Amount.replace('$', '').replace(',', ''));
         insert.run(Status, Type, ClientName, Amount);
-        console.log(`Inserted transaction into ${tableName}: ${JSON.stringify(transaction)}`);
       } else {
         console.error('Skipping incomplete transaction:', transaction);
       }
@@ -49,7 +47,6 @@ app.use(cors());
 app.post('/uploads', (req, res) => {
   try {
     const transactions = req.body;
-    console.log('Received transactions:', transactions);
 
     if (transactions && Array.isArray(transactions)) {
       const tableName = `transactions_${uuidv4().replace(/-/g, '_')}`;
@@ -124,7 +121,6 @@ app.patch('/transactions/:tableName/:transactionId', (req, res) => {
   const { amount, clientName, status, type } = req.body;
 
   try {
-    // Перевіряємо, чи є ідентифікатор транзакції та всі необхідні поля
     if (!transactionId || (!amount && !clientName && !status && !type)) {
       return res.status(400).send('Invalid request.');
     }
@@ -149,15 +145,12 @@ app.patch('/transactions/:tableName/:transactionId', (req, res) => {
       updateParams.push(type);
     }
 
-    // Формуємо SQL запит для оновлення
     const sql = `UPDATE ${tableName} SET ${updateFields.join(', ')} WHERE TransactionId = ?`;
     const updateStmt = db.prepare(sql);
     updateParams.push(transactionId);
 
-    // Виконуємо оновлення
     updateStmt.run(...updateParams);
 
-    // Отримуємо оновлену транзакцію з бази даних і відправляємо назад клієнту
     const updatedTransaction = db.prepare(`SELECT * FROM ${tableName} WHERE TransactionId = ?`).get(transactionId);
     res.json(updatedTransaction);
   } catch (error) {
@@ -169,5 +162,4 @@ app.patch('/transactions/:tableName/:transactionId', (req, res) => {
 
 const port = 1000;
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
 });
