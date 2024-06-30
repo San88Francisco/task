@@ -27,10 +27,7 @@ export const TablesPanel: FC<TablesPanelProps> = ({
   };
 
   return (
-    <Box mt={4}>
-      <Box as="h3" mb={2}>
-        Table Names
-      </Box>
+    <Box mt={85}>
       <BoxContainer>
         <Box sx={{ overflowY: 'auto', height: '270px' }}>
           {tablesData.map((table: string, index: number) => (
